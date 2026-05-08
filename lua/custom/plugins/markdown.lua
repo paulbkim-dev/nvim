@@ -2,7 +2,10 @@ return {
   {
     'MeanderingProgrammer/render-markdown.nvim',
     ft = { 'markdown' },
-    dependencies = { 'nvim-treesitter/nvim-treesitter', 'nvim-tree/nvim-web-devicons' },
+    dependencies = {
+      'nvim-treesitter/nvim-treesitter',
+      { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
+    },
     opts = {
       file_types = { 'markdown' },
     },
@@ -11,24 +14,22 @@ return {
     'iamcco/markdown-preview.nvim',
     ft = { 'markdown' },
     cmd = { 'MarkdownPreviewToggle', 'MarkdownPreview', 'MarkdownPreviewStop' },
-    build = function()
-      vim.fn['mkdp#util#install']()
-    end,
+    build = function() vim.fn['mkdp#util#install']() end,
     init = function()
       local browser = ''
-      local is_macos = vim.fn.has('macunix') == 1
+      local is_macos = vim.fn.has 'macunix' == 1
 
       if is_macos then
-        vim.cmd([[
+        vim.cmd [[
           function! OpenMarkdownPreview(url) abort
             execute 'silent !open ' . shellescape(a:url)
           endfunction
-        ]])
-      elseif vim.fn.executable('google-chrome-stable') == 1 then
+        ]]
+      elseif vim.fn.executable 'google-chrome-stable' == 1 then
         browser = 'google-chrome-stable'
-      elseif vim.fn.executable('google-chrome') == 1 then
+      elseif vim.fn.executable 'google-chrome' == 1 then
         browser = 'google-chrome'
-      elseif vim.fn.executable('chromium') == 1 then
+      elseif vim.fn.executable 'chromium' == 1 then
         browser = 'chromium'
       end
 

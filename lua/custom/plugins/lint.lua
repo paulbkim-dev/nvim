@@ -21,44 +21,10 @@ return {
         },
       })
 
-      -- To allow other plugins to add linters to require('lint').linters_by_ft,
-      -- instead set linters_by_ft like this:
-      -- lint.linters_by_ft = lint.linters_by_ft or {}
-      -- lint.linters_by_ft['markdown'] = { 'markdownlint' }
-      --
-      -- However, note that this will enable a set of default linters,
-      -- which will cause errors unless these tools are available:
-      -- {
-      --   clojure = { "clj-kondo" },
-      --   dockerfile = { "hadolint" },
-      --   inko = { "inko" },
-      --   janet = { "janet" },
-      --   json = { "jsonlint" },
-      --   markdown = { "vale" },
-      --   rst = { "vale" },
-      --   ruby = { "ruby" },
-      --   terraform = { "tflint" },
-      --   text = { "vale" }
-      -- }
-      --
-      -- You can disable the default linters by setting their filetypes to nil:
-      -- lint.linters_by_ft['clojure'] = nil
-      -- lint.linters_by_ft['dockerfile'] = nil
-      -- lint.linters_by_ft['inko'] = nil
-      -- lint.linters_by_ft['janet'] = nil
-      -- lint.linters_by_ft['json'] = nil
-      -- lint.linters_by_ft['markdown'] = nil
-      -- lint.linters_by_ft['rst'] = nil
-      -- lint.linters_by_ft['ruby'] = nil
-      -- lint.linters_by_ft['terraform'] = nil
-      -- lint.linters_by_ft['text'] = nil
-
       local function executable_cmd(cmd)
         if type(cmd) == 'function' then
           local ok, value = pcall(cmd)
-          if not ok then
-            return nil
-          end
+          if not ok then return nil end
           return value
         end
         return cmd
@@ -70,9 +36,7 @@ return {
         for _, linter_name in ipairs(configured) do
           local linter = lint.linters[linter_name]
           local cmd = linter and executable_cmd(linter.cmd)
-          if cmd == nil or cmd == '' or vim.fn.executable(cmd) == 1 then
-            table.insert(available, linter_name)
-          end
+          if cmd == nil or cmd == '' or vim.fn.executable(cmd) == 1 then table.insert(available, linter_name) end
         end
         return available
       end
@@ -80,9 +44,7 @@ return {
       local function trigger_lint()
         if vim.bo.modifiable then
           local linters = available_linters_for(vim.bo.filetype)
-          if #linters > 0 then
-            lint.try_lint(linters)
-          end
+          if #linters > 0 then lint.try_lint(linters) end
         end
       end
 
@@ -116,9 +78,7 @@ return {
         -- avoid superfluous noise, notably within the handy LSP pop-ups that
         -- describe the hovered symbol using Markdown.
         callback = function()
-          if lint_enabled then
-            trigger_lint()
-          end
+          if lint_enabled then trigger_lint() end
         end,
       })
     end,
