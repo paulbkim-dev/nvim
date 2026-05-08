@@ -124,6 +124,26 @@ vim.o.shiftwidth = 2
 vim.o.softtabstop = 2
 vim.o.expandtab = true
 
+vim.filetype.add {
+  extension = {
+    mdx = 'mdx',
+  },
+  filename = {
+    ['compose.yaml'] = 'yaml.docker-compose',
+    ['compose.yml'] = 'yaml.docker-compose',
+    ['docker-compose.yaml'] = 'yaml.docker-compose',
+    ['docker-compose.yml'] = 'yaml.docker-compose',
+    ['.gitlab-ci.yaml'] = 'yaml.gitlab',
+    ['.gitlab-ci.yml'] = 'yaml.gitlab',
+  },
+  pattern = {
+    ['.*/templates/.*%.yaml'] = 'helm',
+    ['.*/templates/.*%.yml'] = 'helm',
+    ['.*/values.*%.yaml'] = 'yaml.helm-values',
+    ['.*/values.*%.yml'] = 'yaml.helm-values',
+  },
+}
+
 -- Enable undo/redo changes even after closing and reopening a file
 vim.o.undofile = true
 
@@ -331,6 +351,20 @@ end
 local rtp = vim.opt.rtp
 rtp:prepend(lazypath)
 
+local treesitter_parsers = {
+  'bash',
+  'c',
+  'diff',
+  'html',
+  'lua',
+  'luadoc',
+  'markdown',
+  'markdown_inline',
+  'query',
+  'vim',
+  'vimdoc',
+}
+
 -- [[ Configure and install plugins ]]
 --
 --  To check the current status of your plugins, run
@@ -396,7 +430,6 @@ require('lazy').setup({
         { '<leader>G', group = '[G]it' },
         { '<leader>m', group = '[M]arkdown' },
         { '<leader>n', group = '[N]eotest' },
-        { '<leader>o', group = '[O]pencode' },
         { '<leader>s', group = '[S]earch' },
         { '<leader>t', group = '[T]oggle' },
         { '<leader>w', group = '[W]indow' },
@@ -768,22 +801,11 @@ require('lazy').setup({
         languages = { 'vue' },
         configNamespace = 'typescript',
       }
+      local has_go = vim.fn.executable 'go' == 1
 
       local servers = {
         -- Languages
         clangd = {},
-        gopls = {
-          settings = {
-            gopls = {
-              analyses = {
-                unusedparams = true,
-                shadow = true,
-              },
-              staticcheck = true,
-              gofumpt = true,
-            },
-          },
-        },
         basedpyright = {
           settings = {
             basedpyright = {
@@ -821,7 +843,6 @@ require('lazy').setup({
         taplo = {},
         elixirls = {},
         gh_actions_ls = {},
-        jqls = {},
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
@@ -863,6 +884,44 @@ require('lazy').setup({
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         --
       }
+
+      if has_go then
+        servers.gopls = {
+          settings = {
+            gopls = {
+              analyses = {
+                unusedparams = true,
+                shadow = true,
+              },
+              staticcheck = true,
+              gofumpt = true,
+            },
+          },
+        }
+      end
+
+      if vim.fn.executable 'jq-lsp' == 1 then
+        servers.jqls = {}
+      end
+
+      servers.marksman.filetypes = { 'markdown', 'mdx' }
+      servers.tailwindcss.filetypes = {
+        'astro',
+        'css',
+        'html',
+        'javascript',
+        'javascriptreact',
+        'less',
+        'markdown',
+        'mdx',
+        'sass',
+        'scss',
+        'svelte',
+        'typescript',
+        'typescriptreact',
+        'vue',
+      }
+
       ---@type MasonLspconfigSettings
       ---@diagnostic disable-next-line: missing-fields
       require('mason-lspconfig').setup {
@@ -876,7 +935,9 @@ require('lazy').setup({
       --    :Mason
       --
       -- You can press `g?` for help in this menu.
-      local ensure_installed = vim.tbl_keys(servers or {})
+      local ensure_installed = vim.tbl_filter(function(server_name)
+        return server_name ~= 'gopls' and server_name ~= 'jqls'
+      end, vim.tbl_keys(servers or {}))
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
         'markdownlint', -- Used by nvim-lint for Markdown buffers
@@ -1125,26 +1186,30 @@ require('lazy').setup({
     'nvim-treesitter/nvim-treesitter',
     branch = 'main',
     lazy = false,
-    lazy = false,
-    build = ':TSUpdate',
+    build = function()
+      if vim.fn.executable 'tree-sitter' ~= 1 then
+        vim.notify('nvim-treesitter: tree-sitter CLI is required to install parsers', vim.log.levels.WARN)
+        return
+      end
+
+      local ok, treesitter = pcall(require, 'nvim-treesitter')
+      if ok then
+        treesitter.install(treesitter_parsers, { summary = true }):wait(300000)
+      end
+    end,
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     config = function()
       local treesitter = require 'nvim-treesitter'
-      treesitter.setup {
-        ensure_installed = {
-          'bash',
-          'c',
-          'diff',
-          'html',
-          'lua',
-          'luadoc',
-          'markdown',
-          'markdown_inline',
-          'query',
-          'vim',
-          'vimdoc',
-        },
-      }
+      treesitter.setup()
+
+      vim.api.nvim_create_user_command('TSInstallConfigured', function()
+        if vim.fn.executable 'tree-sitter' ~= 1 then
+          vim.notify('nvim-treesitter: install tree-sitter CLI first', vim.log.levels.ERROR)
+          return
+        end
+
+        treesitter.install(treesitter_parsers, { summary = true }):raise_on_error()
+      end, { desc = 'Install configured Treesitter parsers' })
 
       vim.api.nvim_create_autocmd('FileType', {
         group = vim.api.nvim_create_augroup('kickstart-treesitter', { clear = true }),
@@ -1176,6 +1241,7 @@ require('lazy').setup({
   -- In normal mode type `<space>sh` then write `lazy.nvim-plugin`
   -- you can continue same window with `<space>sr` which resumes last telescope search
 }, { ---@diagnostic disable-line: missing-fields
+  rocks = { enabled = false },
   ui = {
     -- If you are using a Nerd Font: set icons to an empty table which will use the
     -- default lazy.nvim defined Nerd Font icons, otherwise define a unicode icons table
