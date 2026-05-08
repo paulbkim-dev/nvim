@@ -3,6 +3,8 @@
 Personal Neovim config based on `kickstart.nvim`, tuned for backend-heavy work
 in JavaScript/TypeScript, C/C++, Kubernetes, and server development.
 
+For the hands-on shortcut and motion guide, start with [MANUAL.md](MANUAL.md).
+
 This README is the working manual for what is configured, why it exists, and
 how to use it quickly.
 
