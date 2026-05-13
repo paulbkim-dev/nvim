@@ -1,6 +1,9 @@
 -- Prepend mise shims to PATH so Mason/LSP can find node, go, etc.
 vim.env.PATH = vim.env.HOME .. '/.local/share/mise/shims:' .. vim.env.PATH
 
+-- Cache compiled Lua modules for faster startup
+vim.loader.enable()
+
 -- Set <space> as the leader key
 -- See `:help mapleader`
 -- Must happen before plugins are loaded.
